@@ -10,18 +10,40 @@
 
 QTEST_APPLESS_MAIN(MarkerDetectorTest)
 
-MarkerDetectorTest::MarkerDetectorTest()
+using namespace MarkerDetector;
+using namespace std;
+using namespace cv;
+
+void MarkerDetectorTest::distort()
 {
-}
+    CameraData camData;
+    double fx = 1.f;
+    double fy = 1.f;
+    double cx = 0.5f;
+    double cy = 0.5f;
+    camData.cameraMatrix = (cv::Mat_<double>(3, 3) <<
+                            fx, 0., cx,
+                            0., fy, cy,
+                            0., 0., 1.);
+    camData.distCoefs = vector<double>{0., 0., 0., 0.};
 
-void MarkerDetectorTest::testCase1()
-{
-//    QImage qimg(":/img/m_1.jpg");
-//    QVERIFY(!qimg.isNull());
+    PointArraySp udistPoints;
+    PointArraySp distPoints;
 
-//    cv::Mat img = qimage2cvmat(qimg);
+    udistPoints.push_back(Point2d{cx, cy});
+    udistPoints.push_back(Point2d{0., 0.});
 
-//    cv::Mat fmcImg;
-//    std::vector<cv::Point2d> corners = MarkerDetector::findMarkerCorners(img, fmcImg);
+    distortPoints(udistPoints, distPoints, camData);
+
+    QCOMPARE(distPoints.size(), udistPoints.size());
+    QVERIFY(udistPoints[0] == distPoints[0]);
+    QVERIFY(udistPoints[1] == distPoints[1]);
+
+    camData.distCoefs = vector<double>{0.1, 0.1, 0.1, 0.1};
+
+    distortPoints(udistPoints, distPoints, camData);
+
+    QVERIFY(udistPoints[0] == distPoints[0]);
+    QVERIFY(udistPoints[1] != distPoints[1]);
 }
 

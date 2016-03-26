@@ -8,11 +8,8 @@ class MarkerDetectorTest : public QObject
 {
     Q_OBJECT
 
-public:
-    MarkerDetectorTest();
-
 private Q_SLOTS:
-    void testCase1();
+    void distort();
 };
 
 #endif // MARKERDETECTORTEST_H

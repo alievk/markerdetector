@@ -16,6 +16,20 @@ typedef std::vector<cv::Point2d> PointArraySp;
 // dst - must not be pre-allocated; always assigned to a new instance.
 bool convertToGray(cv::Mat src, cv::Mat &dst, bool rgbSwapped);
 
+struct CameraData
+{
+    cv::Mat cameraMatrix;
+    std::vector<double> distCoefs;
+};
+
+void undistortPoints(const PointArraySp &distPoints,
+                     PointArraySp &udistPoints,
+                     CameraData &camData);
+
+void distortPoints(const PointArraySp &udistPoints,
+                   PointArraySp &distPoints,
+                   CameraData &cameraData);
+
 struct BlobFinderInternals
 {
     // thresholded image

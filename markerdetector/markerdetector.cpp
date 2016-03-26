@@ -2,6 +2,7 @@
 #include "utils.h"
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/calib3d.hpp>
 
 #include <iostream>
 
@@ -194,6 +195,27 @@ bool convertToGray(cv::Mat src, cv::Mat &dst, bool rgbSwapped)
     dst = gray;
 
     return true;
+}
+
+void distortPoints(const PointArraySp &udistPoints, PointArraySp &distPoints, CameraData &cameraData)
+{
+    distPoints.clear();
+
+    double fx = cameraData.cameraMatrix.at<double>(0, 0);
+    double fy = cameraData.cameraMatrix.at<double>(1, 1);
+    double cx = cameraData.cameraMatrix.at<double>(0, 2);
+    double cy = cameraData.cameraMatrix.at<double>(1, 2);
+    CV_Assert(fx * fy);
+    vector<Point3d> objectPoints;
+    for (Point2d up : udistPoints) {
+        Point3d pnt;
+        pnt.x = (up.x - cx) / fx;
+        pnt.y = (up.y - cy) / fy;
+        pnt.z = 1.;
+        objectPoints.push_back(pnt);
+    }
+
+    projectPoints(objectPoints, Vec3d{}, Vec3d{}, cameraData.cameraMatrix, cameraData.distCoefs, distPoints);
 }
 
 } // MarkerDetector namespace
