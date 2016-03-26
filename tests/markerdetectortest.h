@@ -10,6 +10,8 @@ class MarkerDetectorTest : public QObject
 
 private Q_SLOTS:
     void distort();
+    void undistort();
+    void distortUndistort();
 };
 
 #endif // MARKERDETECTORTEST_H

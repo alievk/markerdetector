@@ -218,4 +218,9 @@ void distortPoints(const PointArraySp &udistPoints, PointArraySp &distPoints, Ca
     projectPoints(objectPoints, Vec3d{}, Vec3d{}, cameraData.cameraMatrix, cameraData.distCoefs, distPoints);
 }
 
+void undistortPoints(const PointArraySp &distPoints, PointArraySp &udistPoints, CameraData &camData)
+{
+    cv::undistortPoints(distPoints, udistPoints, camData.cameraMatrix, camData.distCoefs, Mat{}, camData.cameraMatrix);
+}
+
 } // MarkerDetector namespace
