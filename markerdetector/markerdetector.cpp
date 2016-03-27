@@ -78,10 +78,12 @@ void extractEdges(const PointArray &quad, const PointArray &contour, vector<Poin
 void findBlobCorners(cv::Mat srcImg,
                      CameraData camData,
                      std::vector<PointArraySp> &outPoints,
-                     BlobFinderInternals &interm)
+                     BlobFinderInternals &internals)
 {
     CV_Assert(!srcImg.empty());
     CV_Assert(srcImg.type() == CV_8UC1);
+
+    outPoints.clear();
 
     Mat bwImg(srcImg.size(), CV_8UC1);
 
@@ -89,15 +91,13 @@ void findBlobCorners(cv::Mat srcImg,
     double C = 10;
     cv::adaptiveThreshold(srcImg, bwImg, 255, CV_THRESH_BINARY_INV, CV_ADAPTIVE_THRESH_MEAN_C, blockSize, C);
 
-    interm.bwImg = bwImg.clone();
+    internals.bwImg = bwImg.clone();
 
     vector<PointArray> contoursAll;
     cv::findContours(bwImg, contoursAll, RETR_LIST, CV_CHAIN_APPROX_NONE);
 
     const int minContourVerts = 20;
     const double minQuadArea = 100;
-    vector<PointArray> quads;
-    vector<PointArray> quadContours;
     for (PointArray contour : contoursAll) {
         if (contour.size() < minContourVerts) {
             continue;
@@ -111,52 +111,34 @@ void findBlobCorners(cv::Mat srcImg,
         if (approxContour.size() == 4
                 && cv::isContourConvex(approxContour)
                 && cv::contourArea(approxContour) >= minQuadArea) {
-            quads.push_back(approxContour);
-            quadContours.push_back(contour);
+            vector<PointArray> edges;
+            extractEdges(approxContour, contour, edges);
+            CV_Assert(edges.size() == 4);
+
+            internals.edges.push_back(edges);
+
+            vector<Line> lines;
+            for (PointArray edge : edges) {
+                PointArraySp udistEdge;
+                MarkerDetector::undistortPoints(edge, udistEdge, camData);
+
+                Line line = fitEdgeToLine(udistEdge);
+                lines.push_back(line);
+            }
+
+            PointArraySp cornerSp(4);
+            for (int k = 0; k < 4; ++k) {
+                const Line lineA = lines[k];
+                const Line lineB = lines[(k + 1) % 4];
+                cornerSp[k] = calcIntersectionPoint(lineA, lineB);
+            }
+
+            PointArraySp distCornerSp;
+            distortPoints(cornerSp, distCornerSp, camData);
+
+            outPoints.push_back(distCornerSp);
         }
     }
-
-    CV_Assert(quads.size() == quadContours.size());
-
-    vector<PointArraySp> quadListSp;
-
-    vector<vector<PointArray> > edgesOfAllQuads;
-
-    for (int q = 0; q < (int)quads.size(); ++q) {
-        const PointArray &quad = quads[q];
-        const PointArray &contour = quadContours[q];
-        vector<PointArray> edges;
-
-        extractEdges(quad, contour, edges);
-        CV_Assert(edges.size() == 4);
-
-        edgesOfAllQuads.push_back(edges);
-
-        vector<Line> lines;
-        for (PointArray edge : edges) {
-            PointArraySp udistEdge;
-            MarkerDetector::undistortPoints(edge, udistEdge, camData);
-
-            Line line = fitEdgeToLine(udistEdge);
-            lines.push_back(line);
-        }
-
-        PointArraySp cornerSp(4);
-        for (int k = 0; k < 4; ++k) {
-            const Line lineA = lines[k];
-            const Line lineB = lines[(k + 1) % 4];
-            cornerSp[k] = calcIntersectionPoint(lineA, lineB);
-        }
-
-        PointArraySp distCornerSp;
-        distortPoints(cornerSp, distCornerSp, camData);
-
-        quadListSp.push_back(distCornerSp);
-    }
-
-    interm.edges = edgesOfAllQuads;
-
-    outPoints = quadListSp;
 }
 
 bool convertToGray(cv::Mat src, cv::Mat &dst, bool rgbSwapped)
