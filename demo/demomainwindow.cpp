@@ -30,10 +30,21 @@ DemoMainWindow::DemoMainWindow(QWidget *parent) :
     Mat grayImg;
     Q_ASSERT(MarkerDetector::convertToGray(origImg, grayImg, true));
 
+    MarkerDetector::CameraData camData;
+    double fx = 1.f;
+    double fy = 1.f;
+    double cx = 0.5f;
+    double cy = 0.5f;
+    camData.cameraMatrix = (cv::Mat_<double>(3, 3) <<
+                            fx, 0., cx,
+                            0., fy, cy,
+                            0., 0., 1.);
+    camData.distCoefs = vector<double>{0., 0., 0., 0., 0.};
+
     MarkerDetector::BlobFinderInternals interm;
     vector<vector<Point2d> > blobCorners;
     t.start();
-    MarkerDetector::findBlobCorners(grayImg, blobCorners, interm);
+    MarkerDetector::findBlobCorners(grayImg, camData, blobCorners, interm);
     std::cout << "findMarkerCornes took: " << t.elapsed() << "ms" << std::endl;
 
     Mat bw_rgb(interm.bwImg.size(), CV_8UC1);

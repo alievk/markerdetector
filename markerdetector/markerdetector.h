@@ -22,8 +22,8 @@ struct CameraData
     std::vector<double> distCoefs;
 };
 
-void undistortPoints(const PointArraySp &distPoints,
-                     PointArraySp &udistPoints,
+void undistortPoints(cv::InputArray distPoints,
+                     cv::OutputArray udistPoints,
                      CameraData &camData);
 
 void distortPoints(const PointArraySp &udistPoints,
@@ -39,7 +39,7 @@ struct BlobFinderInternals
     std::vector<std::vector<PointArray> > edges;
 };
 
-void findBlobCorners(cv::Mat srcImg,
+void findBlobCorners(cv::Mat srcImg, CameraData camData,
                        std::vector<PointArraySp> &outPoints,
                        BlobFinderInternals &interm);
 }

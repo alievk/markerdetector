@@ -18,7 +18,7 @@ struct Line
     Point2d v; // normalized collinear vector
 };
 
-Line fitEdgeToLine(const PointArray &edge)
+Line fitEdgeToLine(InputArray edge)
 {
     Vec4f linePrm;
     cv::fitLine(edge, linePrm, DIST_L2, 0., 0.01, 0.01);
@@ -41,7 +41,7 @@ Point2d calcIntersectionPoint(Line l1, Line l2)
     return l2.c + t * l2.v;
 }
 
-bool extractEdges(const PointArray &quad, const PointArray &contour, vector<PointArray> &edges)
+void extractEdges(const PointArray &quad, const PointArray &contour, vector<PointArray> &edges)
 {
     CV_Assert(quad.size() == 4);
 
@@ -73,11 +73,10 @@ bool extractEdges(const PointArray &quad, const PointArray &contour, vector<Poin
             edges[iEdge].push_back(contour[iVert]);
         }
     }
-
-    return true;
 }
 
 void findBlobCorners(cv::Mat srcImg,
+                     CameraData camData,
                      std::vector<PointArraySp> &outPoints,
                      BlobFinderInternals &interm)
 {
@@ -127,17 +126,20 @@ void findBlobCorners(cv::Mat srcImg,
         const PointArray &quad = quads[q];
         const PointArray &contour = quadContours[q];
         vector<PointArray> edges;
-        CV_Assert(extractEdges(quad, contour, edges));
+
+        extractEdges(quad, contour, edges);
         CV_Assert(edges.size() == 4);
 
         edgesOfAllQuads.push_back(edges);
 
         vector<Line> lines;
-        for_each(edges.begin(), edges.end(),
-                 [&](PointArray edge)
-        {
-            lines.push_back(fitEdgeToLine(edge));
-        });
+        for (PointArray edge : edges) {
+            PointArraySp udistEdge;
+            MarkerDetector::undistortPoints(edge, udistEdge, camData);
+
+            Line line = fitEdgeToLine(udistEdge);
+            lines.push_back(line);
+        }
 
         PointArraySp cornerSp(4);
         for (int k = 0; k < 4; ++k) {
@@ -146,7 +148,10 @@ void findBlobCorners(cv::Mat srcImg,
             cornerSp[k] = calcIntersectionPoint(lineA, lineB);
         }
 
-        quadListSp.push_back(cornerSp);
+        PointArraySp distCornerSp;
+        distortPoints(cornerSp, distCornerSp, camData);
+
+        quadListSp.push_back(distCornerSp);
     }
 
     interm.edges = edgesOfAllQuads;
@@ -218,9 +223,23 @@ void distortPoints(const PointArraySp &udistPoints, PointArraySp &distPoints, Ca
     projectPoints(objectPoints, Vec3d{}, Vec3d{}, cameraData.cameraMatrix, cameraData.distCoefs, distPoints);
 }
 
-void undistortPoints(const PointArraySp &distPoints, PointArraySp &udistPoints, CameraData &camData)
+void undistortPoints(InputArray distPoints, OutputArray udistPoints, CameraData &camData)
 {
-    cv::undistortPoints(distPoints, udistPoints, camData.cameraMatrix, camData.distCoefs, Mat{}, camData.cameraMatrix);
+    CV_Assert(distPoints.type() == CV_32SC2 || distPoints.type() == CV_32FC2 || distPoints.type() == CV_64FC2);
+    CV_Assert(udistPoints.type() == CV_64FC2);
+
+    PointArraySp srcPoints;
+    if (distPoints.type() == CV_32S) {
+        PointArray arr = distPoints.getMat();
+        for (Point p : arr) {
+            srcPoints.push_back(Point2d{(double)p.x, (double)p.y});
+        }
+    }
+    else {
+        srcPoints = distPoints.getMat();
+    }
+
+    cv::undistortPoints(srcPoints, udistPoints, camData.cameraMatrix, camData.distCoefs, Mat{}, camData.cameraMatrix);
 }
 
 } // MarkerDetector namespace
