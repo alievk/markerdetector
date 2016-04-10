@@ -42,6 +42,18 @@ struct BlobFinderInternals
 void findBlobCorners(cv::Mat srcImg, CameraData camData,
                        std::vector<PointArraySp> &outPoints,
                        BlobFinderInternals &interm);
+
+struct MarkerDecoderInternals
+{
+    PointArraySp probePoints;
+};
+
+cv::Mat readMarkerContent(PointArraySp blobCorners,
+                       cv::Mat image,
+                       int resolution,
+                       int margin,
+                       CameraData camData,
+                       MarkerDecoderInternals &intern);
 }
 
 #endif // MARKERDETECTOR_H

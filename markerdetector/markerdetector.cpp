@@ -224,4 +224,64 @@ void undistortPoints(InputArray distPoints, OutputArray udistPoints, CameraData 
     cv::undistortPoints(srcPoints, udistPoints, camData.cameraMatrix, camData.distCoefs, Mat{}, camData.cameraMatrix);
 }
 
+Mat readMarkerContent(PointArraySp blobCorners,
+                       Mat image,
+                       int contentRes,
+                       int margin,
+                       CameraData camData,
+                       MarkerDecoderInternals &intern)
+{
+    // we describe points in our auxilary reference frame and find
+    // perspective transformation (homography matrix) between these points and
+    // points on the image, then apply that transformation to point grid
+    // that we use further to read potential marker's content
+
+    const double s = 1.; // reference marker edge length
+    const double hs = s/2;
+
+    PointArraySp cornersRef;
+    cornersRef.push_back(Point2d{-hs, -hs});
+    cornersRef.push_back(Point2d{hs, -hs});
+    cornersRef.push_back(Point2d{hs, hs});
+    cornersRef.push_back(Point2d{-hs, hs});
+
+    const double contFrac = double(contentRes) / (contentRes + 2 * margin);
+    const double hcont = contFrac * hs;
+    const double cstep = s / (contentRes + 2 * margin);
+
+    PointArraySp probePointsRef;
+    for (int i {0}; i < contentRes; ++i) {
+        const double cy = hcont - cstep * (i + 1./2);
+        for (int j {0}; j < contentRes; ++j) {
+            const double cx = -hcont + cstep * (j + 1./2);
+            probePointsRef.push_back(Point2d{cx, cy});
+        }
+    }
+
+    PointArraySp blobCornersUndist;
+    undistortPoints(blobCorners, blobCornersUndist, camData);
+
+    vector<Point3d> probePoints3D;
+    Mat H = cv::findHomography(cornersRef, blobCornersUndist);
+    cv::transform(probePointsRef, probePoints3D, H);
+
+    vector<Point2d> probePointsUndist;
+    cv::convertPointsFromHomogeneous(probePoints3D, probePointsUndist);
+
+    vector<Point2d> probePoints;
+    distortPoints(probePointsUndist, probePoints, camData);
+
+    Mat content(contentRes, contentRes, CV_8U);
+    for (int i {0}; i < contentRes; ++i) {
+        for (int j {0}; j < contentRes; ++j) {
+            Point2d p = probePoints[j + i * contentRes];
+            content.at<uchar>(j, i) = image.at<uchar>((int)p.y, (int)p.x);
+        }
+    }
+
+    intern.probePoints = probePoints;
+
+    return content;
+}
+
 } // MarkerDetector namespace
