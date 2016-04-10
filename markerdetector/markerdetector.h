@@ -54,6 +54,8 @@ cv::Mat readMarkerContent(PointArraySp blobCorners,
                        int margin,
                        CameraData camData,
                        MarkerDecoderInternals &intern);
+
+int decodeOrientation(cv::Mat content);
 }
 
 #endif // MARKERDETECTOR_H

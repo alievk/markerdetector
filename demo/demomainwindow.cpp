@@ -25,7 +25,7 @@ DemoMainWindow::DemoMainWindow(QWidget *parent) :
 
     Mat origImg =
 //            imread(QT_STRINGIFY(DATADIR)+String("/marker_on_wall_1.jpg"));
-            imread(QT_STRINGIFY(DATADIR)+String("/marker_synthetic.jpg"));
+            imread(QT_STRINGIFY(DATADIR)+String("/marker_synthetic0.jpg"));
 
     Mat grayImg;
     Q_ASSERT(MarkerDetector::convertToGray(origImg, grayImg, true));
@@ -56,24 +56,15 @@ DemoMainWindow::DemoMainWindow(QWidget *parent) :
     Mat bw_rgb(bfInternals.bwImg.size(), CV_8UC1);
     cvtColor(bfInternals.bwImg, bw_rgb, CV_GRAY2BGR);
 
-//    for (auto contour : interm.edges[0]) {
-//        static int colorChanger {0};
-//        const int thickness = 2;
-//        const Scalar color(((colorChanger+1)*50)%255,
-//                           ((colorChanger+2)*50)%255,
-//                           ((colorChanger+5)*50)%255);
-//        for (int i = 0; i < contour.size(); ++i) {
-//            Point p1 = contour[i];
-//            Point p2 = contour[(i+1)%contour.size()];
-//            line(bw_rgb, p1, p2, color, thickness);
-//        }
-//        ++colorChanger;
-//    }
-
+    const Scalar colors[] = {
+        Scalar(0, 0, 255),
+        Scalar(0, 255, 0),
+        Scalar(255, 0, 0),
+        Scalar(255, 255, 0)
+    };
     for (auto corners : blobCorners) {
-        const Scalar color(0, 0, 255);
         for (int i = 0; i < 4; ++i) {
-            circle(bw_rgb, corners[i], 4, color, -1);
+            circle(bw_rgb, corners[i], 4, colors[i], -1);
         }
     }
 

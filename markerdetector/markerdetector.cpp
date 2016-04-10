@@ -284,4 +284,64 @@ Mat readMarkerContent(PointArraySp blobCorners,
     return content;
 }
 
+int decodeOrientation(Mat content)
+{
+    // given marker with resolution of 5
+    // marker has 4 possible orientations
+    // "0" orientation is when middle row has alternation colors, b-w-b-w.. if you read from left to right
+    //  and middle column has 2 black and 3 white colors if you read from up to down
+    // "1", "2", "3" orientations are achieved by rotation that pattern clockwise.
+
+    CV_Assert(content.rows == content.cols);
+
+    const int res = content.rows;
+    CV_Assert(res == 5 && "Only markers with resolution 5 are supported for now");
+    const int hres = res / 2;
+
+    static auto isAlternating = [](const vector<uchar> &v) -> bool {
+        for (int i {0}; i < v.size(); ++i) {
+            bool w = v[i] != 0;
+            bool odd = i % 2 != 0;
+            if (odd == w) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    static auto isB2W3 = [](const vector<uchar> &v, bool reverse) -> bool {
+        const int hs = (int)v.size() / 2;
+        for (int i {0}; i < v.size(); ++i) {
+            bool w = v[i] != 0;
+            if (!reverse && (i < hs) == w || reverse && (i <= hs) != w) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    Mat midRow = content.row(hres);
+    Mat midCol;
+    cv::transpose(content.col(hres), midCol);
+
+    if (isAlternating(midRow)) {
+        if (isB2W3(midCol, false)) {
+            return 0;
+        }
+        else if (isB2W3(midCol, true)) {
+            return 2;
+        }
+    }
+    else if (isAlternating(midCol)) {
+        if (isB2W3(midRow, true)) {
+            return 3;
+        }
+        else if (isB2W3(midRow, false)) {
+            return 1;
+        }
+    }
+
+    return -1;
+}
+
 } // MarkerDetector namespace

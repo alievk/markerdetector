@@ -114,3 +114,32 @@ void MarkerDetectorTest::distortUndistort()
         QVERIFY(norm < 2e-3);
     }
 }
+
+void MarkerDetectorTest::orientDecoding()
+{
+    Mat m0(5, 5, CV_8U, Scalar(255));
+    Mat m1 = m0.clone();
+    Mat m2 = m0.clone();
+    Mat m3 = m0.clone();
+
+    // content with "0" orientation
+    m0.at<uchar>(0, 2) = m0.at<uchar>(1, 2) = 0;
+    m0.at<uchar>(2, 1) = m0.at<uchar>(2, 3) = 0;
+
+    static auto rotMat = [](const Mat &src, Mat &dst) {
+        for (int i = 0; i < 5; ++i) {
+            for (int j = 0; j < 5; ++j) {
+                dst.at<uchar>(4 - j, i) = src.at<uchar>(i, j);
+            }
+        }
+    };
+
+    rotMat(m0, m1);
+    rotMat(m1, m2);
+    rotMat(m2, m3);
+
+    QCOMPARE(decodeOrientation(m0), 0);
+    QCOMPARE(decodeOrientation(m1), 1);
+    QCOMPARE(decodeOrientation(m2), 2);
+    QCOMPARE(decodeOrientation(m3), 3);
+}

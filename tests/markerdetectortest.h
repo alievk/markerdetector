@@ -12,6 +12,8 @@ private Q_SLOTS:
     void distort();
     void undistort();
     void distortUndistort();
+
+    void orientDecoding();
 };
 
 #endif // MARKERDETECTORTEST_H
